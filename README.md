@@ -1,4 +1,6 @@
-# Overview
+# BunnyMock
+
+**Version: 0.0.2**
 
 This is a brain-dead-simple mock for the `Bunny` class provided by the [bunny gem](https://github.com/ruby-amqp/bunny), which is a synchronous Ruby RabbitMQ client. If you want to mock out RabbitMQ in your tests and are currently using Bunny, this might be the tool for you.
 
@@ -6,14 +8,23 @@ BunnyMock does not mock all of the methods of Bunny. It currently only mocks the
 
 Feel free to fork it to add more behavior mocking and send me a pull request.
 
-# Installation
+## Installation
 
 The easiest way to use this is to drop bunny_mock.rb into your `spec/support` directory, or something like that. Just require bunny_mock and then use `BunnyMock.new` instead of `Bunny.new(params)`.
 
-Someday I might package this up as a gem.
+Add this line to your application's Gemfile:
 
+    gem 'bunny_mock'
 
-# Usage
+And then execute:
+
+    $ bundle install
+
+Or install it yourself as:
+
+    $ gem install bunny_mock
+
+## Usage
 
 Since this is intended as a simple way to help test your collaboration with Bunny/RabbitMQ, it does not really opereate as a real queue, but it _does_ support receiving messages into a queue, and reading them out. The main thing to be aware of is that the `BunnyMock::Queue#subscribe` method does not block waiting for messages, consumes all queued messages, and returns when there are no more messages. This differs from the behavior of the real Bunny.
 
@@ -23,13 +34,13 @@ See the first "integration" test case in `spec/lib/bunny_mock_spec.rb` for a qui
 
 Scott W. Bradley - http://scottwb.com
 
-# Contributing
+## Contributing
 
-* Fork the project.
-* Make your feature addtion or bug fix.
-* Add test for it. This is important so I don't break it in a future version unintentionally.
-* Commit, do not mess with rakefile, version, or history. (If you want to have your own version, that is fine, but bump version in a separate commit by itself so I can ignore it when I pull).
-* Send me a pull request. Bonus points for topic branches.
+1. Fork it ( https://github.com/[my-github-username]/bunny_mock/fork )
+2. Create your feature branch (`git checkout -b my-new-feature`)
+3. Commit your changes (`git commit -am 'Add some feature'`)
+4. Push to the branch (`git push origin my-new-feature`)
+5. Create a new Pull Request
 
 # License
 

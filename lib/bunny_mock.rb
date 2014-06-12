@@ -1,23 +1,45 @@
-class BunnyMock
+require "bunny_mock/version"
 
-  def start
-    :connected
-  end
+module BunnyMock
 
-  def qos
-    :qos_ok
-  end
+  class Bunny
+    def start
+      :connected
+    end
 
-  def stop
-    nil
-  end
+    def qos
+      :qos_ok
+    end
 
-  def queue(*attrs)
-    BunnyMock::Queue.new(*attrs)
-  end
+    def stop
+      nil
+    end
 
-  def exchange(*attrs)
-    BunnyMock::Exchange.new(*attrs)
+    def create_channel
+      BunnyMock::Channel.new
+    end
+
+    def direct(name, *args)
+      BunnyMock::Exchange.new(name, *args)
+    end
+
+    def queue(*attrs)
+      BunnyMock::Queue.new(*attrs)
+    end
+
+    def exchange(*attrs)
+      BunnyMock::Exchange.new(*attrs)
+    end
+  end # class Bunny
+
+  class Channel
+    def direct(name)
+      BunnyMock::Exchange.new(name)
+    end
+
+    def queue(name, *args)
+      BunnyMock::Queue.new(*args)
+    end
   end
 
   class Consumer
@@ -36,7 +58,7 @@ class BunnyMock
       self.delivery_count = 0
     end
 
-    def bind(exchange)
+    def bind(exchange, *args)
       exchange.queues << self
     end
 
@@ -79,7 +101,7 @@ class BunnyMock
         super
       end
     end
-  end
+  end # class Queue
 
   class Exchange
     attr_accessor :name, :attrs, :queues
@@ -114,6 +136,5 @@ class BunnyMock
         super
       end
     end
-  end
-
+  end # class Exchange
 end
