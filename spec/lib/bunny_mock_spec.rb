@@ -1,10 +1,9 @@
 require 'spec_helper'
-require 'bunny_mock'
 
 describe "BunnyMock Integration Tests", :integration => true do
   it "should handle the basics of message passing" do
     # Basic one-to-one queue/exchange setup.
-    bunny = BunnyMock.new
+    bunny = BunnyMock::Bunny.new
     queue = bunny.queue(
       "integration_queue",
       :durable     => true,
@@ -21,17 +20,17 @@ describe "BunnyMock Integration Tests", :integration => true do
     queue.bind(exchange)
 
     # Basic assertions
-    queue.messages.should be_empty
+    expect(queue.messages).to be_empty
     exchange.queues.should have(1).queue
     exchange.should be_bound_to "integration_queue"
     queue.default_consumer.message_count.should == 0
 
-    # Send some messages
+    # # Send some messages
     exchange.publish("Message 1")
     exchange.publish("Message 2")
     exchange.publish("Message 3")
 
-    # Verify state of the queue
+    # # Verify state of the queue
     queue.messages.should have(3).messages
     queue.messages.should == [
       "Message 1",
@@ -45,13 +44,13 @@ describe "BunnyMock Integration Tests", :integration => true do
       "Message 3"
     ]
 
-    # Here's what we expect to happen when we subscribe to this queue.
-    handler = mock("target")
+    # # Here's what we expect to happen when we subscribe to this queue.
+    handler = double("target")
     handler.should_receive(:handle_message).with("Message 1").ordered
     handler.should_receive(:handle_message).with("Message 2").ordered
     handler.should_receive(:handle_message).with("Message 3").ordered
 
-    # Read all those messages
+    # # Read all those messages
     msg_count = 0
     queue.subscribe do |msg|
       handler.handle_message(msg[:payload])
@@ -62,45 +61,82 @@ describe "BunnyMock Integration Tests", :integration => true do
 end
 
 describe BunnyMock do
-  Given(:bunny) { BunnyMock.new }
+  let(:bunny) { BunnyMock::Bunny.new }
 
   describe "#start" do
-    Then { bunny.start.should == :connected }
+    it "connects" do
+      expect(bunny.start).to eq(:connected)
+    end
   end
 
   describe "#qos" do
-    Then { bunny.qos.should == :qos_ok }
+    it "returns :qos_ok" do
+      expect(bunny.qos).to eq(:qos_ok)
+    end
   end
 
   describe "#stop" do
-    Then { bunny.stop.should be_nil }
+    it "returns nil" do
+      expect(bunny.stop).to eq(nil)
+    end
+  end
+
+  describe "#create_channel" do
+    it "returns a new channel" do
+      expect(bunny.create_channel).to be_a(BunnyMock::Channel)
+    end
   end
 
   describe "#queue" do
-    When(:queue) { bunny.queue("my_queue", :durable => true) }
-    Then { queue.should be_a BunnyMock::Queue }
-    Then { queue.name.should == "my_queue" }
-    Then { queue.should be_durable }
+    let(:queue_name) { 'my_queue' }
+    let(:queue) { bunny.queue(queue_name, :durable => true) }
+
+    it "is a BunnyMock::Queue" do
+      expect(queue).to be_a(BunnyMock::Queue)
+    end
+
+    it "name is consistent" do
+      expect(queue.name).to eq(queue_name)
+    end
+
+    it "is durable" do
+      expect(queue).to be_durable
+    end
   end
 
   describe "#exchange" do
-    When(:exchange) { bunny.exchange("my_exch", :type => :direct) }
-    Then { exchange.should be_a BunnyMock::Exchange }
-    Then { exchange.name.should == "my_exch" }
-    Then { exchange.type.should == :direct }
+    let(:exchange_name) { 'my_exch' }
+    let(:exchange_type) { :direct }
+    let(:exchange) { bunny.exchange(exchange_name, :type => exchange_type) }
+
+    it "is a BunnyMock::Exchange" do
+      expect(exchange).to be_a(BunnyMock::Exchange)
+    end
+
+    it "name is consistent" do
+      expect(exchange.name).to eq(exchange_name)
+    end
+
+    it "type is consistent" do
+      expect(exchange.type).to eq(exchange_type)
+    end
   end
 end
 
 describe BunnyMock::Consumer do
   describe "#message_count" do
-    Given(:consumer) { BunnyMock::Consumer.new(5) }
-    Then { consumer.message_count.should == 5 }
+    let(:msg_count) { 5 }
+    let(:consumer) { BunnyMock::Consumer.new(msg_count) }
+
+    it "message count is consistent" do
+      expect(consumer.message_count).to eq(msg_count)
+    end
   end
 end
 
 describe BunnyMock::Queue do
-  Given(:queue_name) { "my_test_queue" }
-  Given(:queue_attrs) {
+  let(:queue_name) { "my_test_queue" }
+  let(:queue_attrs) {
     {
       :durable     => true,
       :auto_delete => true,
@@ -108,140 +144,254 @@ describe BunnyMock::Queue do
       :arguments   => {"x-ha-policy" => "all"}
     }
   }
-  Given(:queue) { BunnyMock::Queue.new(queue_name, queue_attrs) }
+  let(:queue) { BunnyMock::Queue.new(queue_name, queue_attrs) }
 
   describe "#name" do
-    Then { queue.name.should == queue_name }
+    it "is consistent" do
+      expect(queue.name).to eq(queue_name)
+    end
   end
 
   describe "#attrs" do
-    Then { queue.attrs.should == queue_attrs }
+    it "are consistent" do
+      expect(queue.attrs).to eq(queue_attrs)
+    end
   end
 
   describe "#messages" do
-    Then { queue.messages.should be_an Array }
-    Then { queue.messages.should be_empty }
+    it "is an Array" do
+      expect(queue.messages).to be_an(Array)
+    end
+
+    it "should be empty" do
+      expect(queue.messages).to be_empty
+    end
   end
 
-  describe "#snapshot_messages" do
-    Then { queue.snapshot_messages.should be_an Array }
-    Then { queue.snapshot_messages.should be_empty }
+  describe "#messages" do
+    it "is an Array" do
+      expect(queue.snapshot_messages).to be_an(Array)
+    end
+
+    it "should be empty" do
+      expect(queue.snapshot_messages).to be_empty
+    end
   end
 
   describe "#delivery_count" do
-    Then { queue.delivery_count.should == 0 }
+    it "is initialized to zero" do
+      expect(queue.delivery_count).to eq(0)
+    end
   end
 
   describe "#subscribe" do
-    Given { queue.messages = ["Ehh", "What's up Doc?"] }
-    Given(:handler) { mock("handler") }
-    Given {
+    let(:handler) { double("handler") }
+
+    before(:each) do
+      queue.messages = ["Ehh", "What's up Doc?"]
       handler.should_receive(:handle).with("Ehh").ordered
       handler.should_receive(:handle).with("What's up Doc?").ordered
-    }
-    When { queue.subscribe { |msg| handler.handle(msg[:payload]) } }
-    Then { queue.messages.should be_empty }
-    Then { queue.snapshot_messages.should be_empty }
-    Then { queue.delivery_count.should == 2 }
-    Then { verify_mocks_for_rspec }
+      queue.subscribe { |msg| handler.handle(msg[:payload]) }
+    end
+
+    it "#messages are empty" do
+      expect(queue.messages).to be_empty
+    end
+
+    it "#snapshot_messages are empty" do
+      expect(queue.snapshot_messages).to be_empty
+    end
+
+    it "#delivery_count is accurate" do
+      expect(queue.delivery_count).to eq(2)
+    end
+
+    it "verifies the mocks for rspec" do
+      verify_mocks_for_rspec
+    end
   end
 
   describe "#snapshot_messages" do
-    Given { queue.messages = ["Ehh", "What's up Doc?"] }
-    Then {
+    let(:msg1) { 'Ehh' }
+    let(:msg2) { "What's up Doc?" }
+    let(:msg3) { 'Nothin'}
+    let(:the_messages) { [msg1, msg2] }
+    before(:each) do
+      queue.messages = the_messages
+    end
+
+    it "are persistent" do
       snapshot = queue.snapshot_messages
-      snapshot.should == ["Ehh", "What's up Doc?"]
+      expect(snapshot).to eq(the_messages)
       snapshot.shift
-      snapshot << "Nothin"
-      snapshot.should == ["What's up Doc?", "Nothin"]
-      queue.messages.should == ["Ehh", "What's up Doc?"]
-      queue.snapshot_messages.should == ["Ehh", "What's up Doc?"]
-    }
+      snapshot << msg3
+      expect(snapshot).to eq([msg2, msg3])
+      expect(queue.messages).to eq(the_messages)
+      expect(queue.snapshot_messages).to eq(the_messages)
+    end
   end
 
   describe "#bind" do
-    Given(:exchange) { BunnyMock::Exchange.new("my_test_exchange",) }
-    When { queue.bind(exchange) }
-    Then { exchange.should be_bound_to "my_test_queue" }
+    let(:exchange_name) { 'my_test_exchange' }
+    let(:exchange) { BunnyMock::Exchange.new(exchange_name,) }
+    before(:each) { queue.bind(exchange) }
+
+    it "is bound" do
+      exchange.should be_bound_to "my_test_queue"
+    end
   end
 
   describe "#default_consumer" do
-    Given { queue.delivery_count = 5 }
-    When(:consumer) { queue.default_consumer }
-    Then { consumer.should be_a BunnyMock::Consumer }
-    Then { consumer.message_count.should == 5 }
+    let(:delivery_count) { 5 }
+    let(:consumer) { queue.default_consumer }
+    before(:each) do
+      queue.delivery_count = delivery_count
+    end
+
+    it "is the correct class" do
+      expect(consumer).to be_a(BunnyMock::Consumer)
+    end
+
+    it "has a consistent message_count" do
+      expect(consumer.message_count).to eq(delivery_count)
+    end
   end
 
   describe "#method_missing" do
-    Then { queue.durable.should be_true }
-    Then { queue.should be_durable }
-    Then { queue.auto_delete.should be_true }
-    Then { queue.should be_auto_delete }
-    Then { queue.exclusive.should == false }
-    Then { queue.should_not be_exclusive }
-    Then { queue.arguments.should == {"x-ha-policy" => "all"} }
-    Then { expect { queue.wtf }.to raise_error NoMethodError }
+    it "queue is durable" do
+      expect(queue).to be_durable
+    end
+
+    it "queue is auto_delete" do
+      expect(queue.auto_delete).to be_true
+    end
+
+    it "queue is NOT exclusive" do
+      expect(queue.exclusive).to be_false
+    end
+
+    it "queue arguments are consistent" do
+      expect(queue.arguments).to eq({"x-ha-policy" => "all"})
+    end
+
+    it "raises a NoMethodError error for an unhandled method" do
+      expect{queue.wtf}.to raise_error(NoMethodError)
+    end
   end
 end
 
 describe BunnyMock::Exchange do
-  Given(:exchange_name) { "my_test_exchange" }
-  Given(:exchange_attrs) {
+  let(:exchange_name) { "my_test_exchange" }
+  let(:exchange_attrs) {
     {
       :type        => :direct,
       :durable     => true,
       :auto_delete => true
     }
   }
-  Given(:exchange) { BunnyMock::Exchange.new(exchange_name, exchange_attrs) }
+  let(:exchange) { BunnyMock::Exchange.new(exchange_name, exchange_attrs) }
 
   describe "#name" do
-    Then { exchange.name.should == exchange_name }
+    it "returns the name" do
+      expect(exchange.name).to eq(exchange_name)
+    end
   end
 
   describe "#attrs" do
-    Then { exchange.attrs.should == exchange_attrs }
+    it "returns the attributes" do
+      expect(exchange.attrs).to eq(exchange_attrs)
+    end
   end
 
   describe "#queues" do
     context "when the exchange is not bound to any queues" do
-      Then { exchange.queues.should be_an Array }
-      Then { exchange.queues.should be_empty }
+      it "is an Array" do
+        expect(exchange.queues).to be_an(Array)
+      end
+
+      it "is empty" do
+        expect(exchange.queues).to be_empty
+      end
     end
 
     context "when the exchange is bound to a queue" do
-      Given(:queue) { BunnyMock::Queue.new("a_queue") }
-      Given { queue.bind(exchange) }
-      Then { exchange.queues.should have(1).queue }
-      Then { exchange.queues.first.should == queue }
+      let(:queue) { BunnyMock::Queue.new("a_queue") }
+      before(:each) { queue.bind(exchange) }
+
+      it "has one queue" do
+        exchange.queues.should have(1).queue
+      end
+
+      it "returns the correct queue" do
+        expect(exchange.queues.first).to eq(queue)
+      end
     end
   end
 
   describe "#bound_to?" do
-    Given(:queue) { BunnyMock::Queue.new("a_queue") }
-    Given { queue.bind(exchange) }
-    Then { exchange.should be_bound_to("a_queue") }
-    Then { exchange.should_not be_bound_to("another_queue") }
+    let(:queue_name) { 'a_queue' }
+    let(:queue) { BunnyMock::Queue.new(queue_name) }
+    before(:each) { queue.bind(exchange) }
+
+    it "is bound to a queue" do
+      expect(exchange).to be_bound_to(queue_name)
+    end
+
+    it "is not bound to another queue" do
+      expect(exchange).to_not be_bound_to('another_queue')
+    end
   end
 
   describe "#publish" do
-    Given(:queue1) { BunnyMock::Queue.new("queue1") }
-    Given(:queue2) { BunnyMock::Queue.new("queue2") }
-    Given { queue1.bind(exchange) }
-    Given { queue2.bind(exchange) }
-    When { exchange.publish("hello") }
-    Then { queue1.messages.should == ["hello"] }
-    Then { queue1.snapshot_messages.should == ["hello"] }
-    Then { queue2.messages.should == ["hello"] }
-    Then { queue2.snapshot_messages.should == ["hello"] }
+    let(:the_message) { 'the message' }
+    let(:queue1) { BunnyMock::Queue.new("queue1") }
+    let(:queue2) { BunnyMock::Queue.new("queue2") }
+    before(:each) do
+      queue1.bind(exchange)
+      queue2.bind(exchange)
+      exchange.publish(the_message)
+    end
+
+    it "publishes the message" do
+      expect(queue1.messages).to eq([the_message])
+    end
+
+    it "publishes the snapshot message" do
+      expect(queue1.snapshot_messages).to eq([the_message])
+    end
+
+    it "publishes the message" do
+      expect(queue2.messages).to eq([the_message])
+    end
+
+    it "publishes the snapshot message" do
+      expect(queue2.snapshot_messages).to eq([the_message])
+    end
   end
 
   describe "#method_missing" do
-    Then { exchange.type.should == :direct }
-    Then { exchange.durable.should be_true }
-    Then { exchange.should be_durable }
-    Then { exchange.auto_delete.should be_true }
-    Then { exchange.should be_auto_delete }
-    Then { expect { exchange.wtf }.to raise_error NoMethodError }
+    it "exchange.type returns the correct type" do
+      expect(exchange.type).to eq(:direct)
+    end
+
+    it "exchange.durable returns true" do
+      expect(exchange.durable).to be_true
+    end
+
+    it "exchange is durable" do
+      exchange.should be_durable
+    end
+
+    it "exchange auto_delete is true" do
+      expect(exchange.auto_delete).to be_true
+    end
+
+    it "exchange is auto_delete" do
+      exchange.should be_auto_delete
+    end
+
+    it "raises NoMethodError on invalid method call" do
+      expect { exchange.wtf }.to raise_error NoMethodError
+    end
   end
 end
