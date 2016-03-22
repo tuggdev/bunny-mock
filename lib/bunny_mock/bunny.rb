@@ -27,12 +27,15 @@ class BunnyMock::Bunny
     self.class.exchanges.has_key?(name)
   end
 
-  def self.queue(name, attrs = {})
-    queues[name] ||= BunnyMock::Queue.new(name, attrs)
+  def self.queue(name, opts = {})
+    queues[name] ||= BunnyMock::Queue.new(name, opts)
   end
 
-  def self.exchange(channel, type, name, attrs = {})
-    queues[name] ||= BunnyMock::Exchange.new(channel, type, name, attrs)
+  def self.exchange(name, opts = {})
+    channel = opts.delete(:channel) || BunnyMock::Channel.new
+    type = opts.delete(:type) || :direct
+
+    exchanges[name] ||= BunnyMock::Exchange.new(channel, type, name, opts)
   end
 
   def self.queues

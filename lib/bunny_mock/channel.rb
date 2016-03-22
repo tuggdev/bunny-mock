@@ -12,16 +12,20 @@ class BunnyMock::Channel
   def prefetch(n); end
   def acknowledge(tag); end
 
-  def queue(name, attrs = {})
-    @queues[name] ||= BunnyMock::Bunny.queue(name, attrs)
+  def queue(name, opts = {})
+    @queues[name] ||= BunnyMock::Bunny.queue(name, opts)
   end
 
-  def direct(name, attrs = {})
-    BunnyMock::Exchange.new(self, :direct, name, attrs).tap { |e| @exchanges[name] = e }
+  def direct(name, opts = {})
+    @exchanges[name] ||= BunnyMock::Bunny.exchange(name, opts.merge(channel: self, type: :direct))
   end
 
-  def fanout(name, attrs = {})
-    BunnyMock::Exchange.new(self, :fanout, name, attrs).tap { |e| @exchanges[name] = e }
+  def fanout(name, opts = {})
+    @exchanges[name] ||= BunnyMock::Bunny.exchange(name, opts.merge(channel: self, type: :fanout))
+  end
+
+  def exchange(name, opts = {})
+    @exchanges[name] ||= BunnyMock::Bunny.exchange(name, opts.merge(channel: self))
   end
 
 end

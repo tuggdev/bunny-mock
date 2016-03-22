@@ -1,6 +1,8 @@
+require_relative 'message'
+
 class BunnyMock::Exchange
 
-  attr_accessor :channel, :type, :name, :attrs, :queues
+  attr_accessor :channel, :type, :name, :attrs, :queues, :messages
 
   def initialize(channel, type, name, attrs = {})
     self.channel  = channel
@@ -8,10 +10,14 @@ class BunnyMock::Exchange
     self.name     = name
     self.attrs    = attrs.dup
     self.queues   = []
+    self.messages = []
   end
 
   def publish(msg, msg_attrs = {})
-    queues.each { |q| q.messages << msg }
+    message = BunnyMock::Message.new(msg, msg_attrs)
+
+    self.messages << message
+    queues.each { |q| q.messages << message }
   end
 
   def bound_to?(queue_name)
